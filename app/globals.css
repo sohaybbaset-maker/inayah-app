@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800;900&display=swap');
+@import "tailwindcss";
+
+:root {
+  --navy: #0B1929;
+  --navy-light: #112240;
+  --green: #0D5C3A;
+  --green-light: #1A7A4F;
+  --gold: #C9A84C;
+  --gold-light: #E8C96A;
+  --sand: #F5EDD6;
+  --off-white: #FAF7F2;
+  --text-primary: #1A1A2E;
+  --text-muted: #6B7280;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: 'Tajawal', sans-serif;
+  direction: rtl;
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--off-white);
+  color: var(--text-primary);
+  font-family: 'Tajawal', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.gradient-hero {
+  background: linear-gradient(135deg, #0B1929 0%, #0D3B2E 60%, #0D5C3A 100%);
+}
+
+.gold-text {
+  color: #C9A84C;
+}
+
+.gold-border {
+  border: 1px solid rgba(201, 168, 76, 0.3);
+}
+
+.gold-border:hover {
+  border-color: rgba(201, 168, 76, 0.7);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #FAF7F2;
+}
+::-webkit-scrollbar-thumb {
+  background: #C9A84C;
+  border-radius: 3px;
+}
