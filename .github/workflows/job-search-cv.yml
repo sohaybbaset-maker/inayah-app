@@ -1,0 +1,85 @@
+name: Job Search & CV Prep — Michael Page Riyadh
+
+on:
+  schedule:
+    # Runs every 2 days at 9:00 AM Riyadh time (UTC+3 → 06:00 UTC)
+    - cron: '0 6 */2 * *'
+  workflow_dispatch:
+    # Also allows manual trigger from GitHub Actions tab
+
+jobs:
+  job-search:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: claude/job-search-cv-prep-q74ywv
+
+      - name: Run Claude — Job Search & CV Generation
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_tools: >
+            Bash,
+            Read,
+            Write,
+            Edit,
+            WebSearch,
+            WebFetch
+          prompt: |
+            You are running an automated job search task for Sohayb Baset.
+
+            His master CV is at: /home/runner/work/inayah-app/inayah-app/Sohayb_Baset_CBO_Tailored_CV.docx
+
+            Background on Sohayb:
+            - Currently VP at Sahat Venture Studio, Riyadh
+            - 13+ years experience in venture building, BD, Saudi market entry
+            - Co-founded Ph Store (successful exit to Grinta)
+            - MBA Strategic Management
+            - Key skills: Venture studio ops, partnerships, Saudi market entry (35+ companies), stakeholder management
+
+            Task:
+            1. Search michaelpage.ae/jobs/riyadh for current job listings using WebSearch
+               - Focus on: Chief Business Officer, Head of Partnerships, Strategic Partnerships,
+                 BD Manager, Country Manager, Market Entry, VP BD, Executive Director,
+                 GM, Program Director/Accelerator roles
+            2. For each relevant role found, score the fit (0-100%) based on Sohayb's profile above
+            3. Save a markdown report to job_search_results/YYYY-MM-DD_report.md with:
+               - Table of all relevant jobs found (title, company/sector, fit score, why)
+               - Top 3 recommendations
+            4. For the #1 best match: generate a tailored DOCX CV using python3 with python-docx
+               - Save to job_search_results/YYYY-MM-DD_[Role]_CV.docx
+               - Use the same high-quality format as the existing CV in the repo
+               - Lead with the role's requirements, keep all verified metrics intact
+            5. Commit and push everything to branch: claude/job-search-cv-prep-q74ywv
+
+            Important rules:
+            - Never change verified metrics from the master CV
+            - Keep Arabic name transliteration exactly: SOHAYB BASET
+            - Contact: +966 591 692 425 · sohaybbaset@gmail.com · linkedin.com/in/sohaybbaset · Riyadh
+
+      - name: Send email summary
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          secure: false
+          username: ${{ secrets.GMAIL_USER }}
+          password: ${{ secrets.GMAIL_APP_PASSWORD }}
+          to: sohaybbaset@gmail.com
+          from: "Job Search Bot <${{ secrets.GMAIL_USER }}>"
+          subject: "Michael Page Riyadh — وظايف جديدة ليك (${{ github.run_number }})"
+          body: |
+            مرحباً سهيب،
+
+            الـ job search الأوتوماتيكي اشتغل النهاردة على Michael Page Riyadh.
+
+            شوف النتايج والـ CV الجديد في الـ repository:
+            https://github.com/${{ github.repository }}/tree/claude/job-search-cv-prep-q74ywv/job_search_results
+
+            — Claude Code Bot
