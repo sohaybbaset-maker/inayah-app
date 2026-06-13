@@ -1,0 +1,140 @@
+{
+  "name": "Sohayb — Job Search & CV (Michael Page Riyadh)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "daysInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Every 2 Days",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://serpapi.com/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "engine", "value": "google" },
+            { "name": "q", "value": "site:michaelpage.ae riyadh jobs chief OR director OR VP OR partnerships OR \"business development\" OR \"market entry\"" },
+            { "name": "num", "value": "20" },
+            { "name": "api_key", "value": "={{ $env.SERPAPI_KEY }}" }
+          ]
+        }
+      },
+      "id": "search-jobs",
+      "name": "Search Michael Page Riyadh",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const results = $input.item.json.organic_results || [];\nconst jobs = results.map(r => ({\n  title: r.title,\n  link: r.link,\n  snippet: r.snippet\n}));\nreturn [{ json: { jobs, jobsText: jobs.map(j => `${j.title}: ${j.snippet}`).join('\\n') } }];"
+      },
+      "id": "parse-jobs",
+      "name": "Parse Job Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "={{ $env.ANTHROPIC_API_KEY }}" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "content-type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": {
+          "model": "claude-sonnet-4-6",
+          "max_tokens": 4000,
+          "messages": [
+            {
+              "role": "user",
+              "content": "=أنت مساعد متخصص في البحث عن وظايف.\n\nبروفايل المرشح — سهيب باسط:\n- حالياً VP في Sahat Venture Studio، الرياض\n- 13+ سنة خبرة في venture building، BD، Saudi market entry\n- Co-Founder مع exit ناجح (Ph Store → Grinta)\n- MBA Strategic Management\n- بنى برنامج soft-landing لـ 35+ شركة من 12 دولة في KSA\n- خبرة في: partnerships، stakeholder management، platform strategy\n\nالوظايف المتاحة على Michael Page Riyadh:\n{{ $json.jobsText }}\n\nالمطلوب:\n1. قيّم كل وظيفة (0-100%) مع سبب مختصر\n2. رتبهم من الأعلى للأدنى\n3. اكتب ملخص HTML بجدول واضح للإيميل\n4. وضح الـ Top 3 بتفصيل\n\nرد بـ JSON بهذا الشكل:\n{\"top3\": [{\"title\": \"\", \"score\": 0, \"reason\": \"\", \"link\": \"\"}], \"email_html\": \"<html>...\"}"
+            }
+          ]
+        }
+      },
+      "id": "claude-analyze",
+      "name": "Claude — Analyze & Score Jobs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.item.json.content[0].text;\ntry {\n  const parsed = JSON.parse(response);\n  return [{ json: parsed }];\n} catch(e) {\n  return [{ json: { email_html: response, top3: [] } }];\n}"
+      },
+      "id": "parse-response",
+      "name": "Parse Claude Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "sendTo": "sohaybbaset@gmail.com",
+        "subject": "=Michael Page Riyadh — وظايف جديدة ليك | {{ $now.format('DD/MM/YYYY') }}",
+        "message": "={{ $json.email_html }}",
+        "options": {
+          "allowUnauthorizedCerts": false,
+          "appendAttribution": false
+        }
+      },
+      "id": "send-email",
+      "name": "Send Email to Sohayb",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [1340, 300],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-credentials",
+          "name": "Gmail — Sohayb"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 2 Days": { "main": [[{ "node": "Search Michael Page Riyadh", "type": "main", "index": 0 }]] },
+    "Search Michael Page Riyadh": { "main": [[{ "node": "Parse Job Results", "type": "main", "index": 0 }]] },
+    "Parse Job Results": { "main": [[{ "node": "Claude — Analyze & Score Jobs", "type": "main", "index": 0 }]] },
+    "Claude — Analyze & Score Jobs": { "main": [[{ "node": "Parse Claude Response", "type": "main", "index": 0 }]] },
+    "Parse Claude Response": { "main": [[{ "node": "Send Email to Sohayb", "type": "main", "index": 0 }]] }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Riyadh"
+  },
+  "_setup_instructions": {
+    "required_env_vars": {
+      "ANTHROPIC_API_KEY": "من https://console.anthropic.com",
+      "SERPAPI_KEY": "من https://serpapi.com (فيه free plan 100 بحث/شهر)"
+    },
+    "credentials_needed": ["Gmail OAuth2"],
+    "import_steps": [
+      "1. افتح n8n",
+      "2. اضغط + New Workflow",
+      "3. اضغط على قايمة الـ 3 نقط → Import from JSON",
+      "4. الصق محتوى الملف ده",
+      "5. ضيف الـ credentials وبالتشغيل"
+    ]
+  }
+}

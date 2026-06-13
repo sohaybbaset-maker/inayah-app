@@ -1,0 +1,120 @@
+{
+  "name": "Sohayb — Job Search & CV (Michael Page Riyadh)",
+  "flow": [
+    {
+      "id": 1,
+      "module": "builtin:BasicTrigger",
+      "version": 1,
+      "parameters": {},
+      "scheduler": {
+        "type": "days",
+        "interval": 2,
+        "time": "09:00",
+        "timezone": "Asia/Riyadh"
+      },
+      "label": "Every 2 Days — 9AM Riyadh"
+    },
+    {
+      "id": 2,
+      "module": "http:ActionSendData",
+      "version": 3,
+      "parameters": {
+        "url": "https://serpapi.com/search",
+        "method": "GET",
+        "qs": [
+          { "key": "engine", "value": "google" },
+          { "key": "q", "value": "site:michaelpage.ae riyadh jobs chief OR director OR VP OR partnerships OR \"business development\" OR \"market entry\" 2026" },
+          { "key": "num", "value": "20" },
+          { "key": "api_key", "value": "{{SERPAPI_KEY}}" }
+        ],
+        "parseResponse": true
+      },
+      "label": "Search Michael Page Riyadh Jobs"
+    },
+    {
+      "id": 3,
+      "module": "builtin:BasicAggregator",
+      "version": 1,
+      "parameters": {
+        "expression": "{{join(map(2.organic_results; item.title & \": \" & item.snippet); \"\\n\")}}"
+      },
+      "label": "Aggregate Job Listings"
+    },
+    {
+      "id": 4,
+      "module": "http:ActionSendData",
+      "version": 3,
+      "parameters": {
+        "url": "https://api.anthropic.com/v1/messages",
+        "method": "POST",
+        "headers": [
+          { "key": "x-api-key", "value": "{{ANTHROPIC_API_KEY}}" },
+          { "key": "anthropic-version", "value": "2023-06-01" },
+          { "key": "content-type", "value": "application/json" }
+        ],
+        "body": {
+          "model": "claude-sonnet-4-6",
+          "max_tokens": 4000,
+          "messages": [
+            {
+              "role": "user",
+              "content": "أنت مساعد متخصص في البحث عن وظايف.\n\nبروفايل المرشح — سهيب باسط:\n- VP في Sahat Venture Studio، الرياض (حالياً)\n- 13+ سنة خبرة: venture building، BD، Saudi market entry\n- Co-Founder مع successful exit (Ph Store → Grinta)\n- MBA Strategic Management\n- بنى soft-landing programme لـ 35+ شركة من 12 دولة في KSA\n- متمكن في: partnerships، stakeholder management، platform strategy، KPI/OKR\n\nالوظايف المتاحة على Michael Page Riyadh:\n{{3.result}}\n\nالمطلوب:\n1. قيّم كل وظيفة من 0-100% مع سبب مختصر\n2. اعمل جدول HTML منظم للإيميل\n3. وضح Top 3 بتفاصيل وعلة لماذا مناسبة\n\nرد بـ JSON:\n{\"top3\":[{\"title\":\"\",\"score\":0,\"reason\":\"\",\"apply_link\":\"\"}],\"all_jobs_html\":\"<table>...\",\"summary\":\"\"}"
+            }
+          ]
+        },
+        "parseResponse": true
+      },
+      "label": "Claude — Score & Rank Jobs"
+    },
+    {
+      "id": 5,
+      "module": "builtin:BasicJSONParser",
+      "version": 1,
+      "parameters": {
+        "input": "{{4.data.content[0].text}}"
+      },
+      "label": "Parse Claude Response"
+    },
+    {
+      "id": 6,
+      "module": "gmail:ActionSendEmail",
+      "version": 1,
+      "parameters": {
+        "to": "sohaybbaset@gmail.com",
+        "subject": "Michael Page Riyadh — وظايف جديدة ليك | {{formatDate(now; \"DD/MM/YYYY\")}}",
+        "content": "<h2 style='color:#1F4E79'>Michael Page Riyadh — أحدث الوظايف</h2>\n<p>التاريخ: {{formatDate(now; \"DD MMMM YYYY\")}}</p>\n\n<h3>Top 3 وظايف الأنسب ليك:</h3>\n{{5.top3}}\n\n<h3>كل الوظايف المتاحة:</h3>\n{{5.all_jobs_html}}\n\n<hr>\n<p style='color:gray;font-size:12px'>تم الإرسال أوتوماتيك بواسطة Claude — Job Search Bot</p>",
+        "contentType": "html"
+      },
+      "label": "Email Results to Sohayb"
+    }
+  ],
+  "metadata": {
+    "instant": false,
+    "version": 1,
+    "scenario": {
+      "roundtrips": 1,
+      "maxErrors": 3,
+      "autoCommit": true,
+      "autoCommitTriggerLast": true,
+      "sequential": false,
+      "confidential": false,
+      "dataloss": false,
+      "dlq": false,
+      "freshVariables": false
+    }
+  },
+  "_setup_instructions": {
+    "required_variables": {
+      "ANTHROPIC_API_KEY": "من https://console.anthropic.com",
+      "SERPAPI_KEY": "من https://serpapi.com (100 بحث/شهر مجاناً)"
+    },
+    "connections_needed": ["Gmail (OAuth)"],
+    "import_steps": [
+      "1. افتح make.com",
+      "2. اضغط Create new scenario",
+      "3. اضغط على قايمة الـ ... (More) → Import Blueprint",
+      "4. الصق محتوى الملف ده",
+      "5. ضيف الـ connections وفعّل الـ scenario"
+    ]
+  }
+}
